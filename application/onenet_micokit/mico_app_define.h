@@ -42,7 +42,7 @@ extern "C" {
 #define MANUFACTURER_NAME "MXCHIP"
 #define PRODUCT_TYPE "MiCO"
 #define PRODUCT_MODEL "Kit"
-#define APP_VERSION "1" //must number
+#define APP_VERSION "2" //must number
 
 /**
   * @brief  product register code, OneNet cloud define

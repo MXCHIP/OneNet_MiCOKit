@@ -13,6 +13,10 @@ typedef struct {
     int32_t light_sensor;
     int32_t infrared;
     int8_t dc_motor;
+    float hues;
+    float saturation;
+    float brightness;
+    int8_t lamp_switch;
 
     serialize_fn serialize;
     get_size_fn  get_size;

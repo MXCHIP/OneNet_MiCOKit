@@ -11,6 +11,14 @@ typedef struct _sensor_data_t{
     uint16_t infrared;
 } sensor_data_t;
 
+typedef struct _sensor_state_t{
+    bool dc_motor;
+    float hues;
+    float saturation;
+    float brightness;
+    bool lamp_switch;
+}sensor_state_t;
+
 typedef struct _event_t{
     bool is_sensor;
 } event_t;

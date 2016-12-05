@@ -264,6 +264,9 @@ static void p72416_t3_notification_destroy(void *data)
         if (record->dc_motor && record->dc_motor->destroy) {
             record->dc_motor->destroy(record->dc_motor);
         }
+        if (record->lamp_switch && record->lamp_switch->destroy) {
+            record->lamp_switch->destroy(record->lamp_switch);
+        }
         regina_data_destroy(record);
     }
 }
@@ -277,6 +280,7 @@ static void p72416_t3_notification_serialize(avro_writer_t writer, void *data)
         record->saturation->serialize(writer, record->saturation);
         record->brightness->serialize(writer, record->brightness);
         record->dc_motor->serialize(writer, record->dc_motor);
+        record->lamp_switch->serialize(writer, record->lamp_switch);
     }
 }
 
@@ -290,6 +294,7 @@ static size_t p72416_t3_notification_get_size(void *data)
         record_size += record->saturation->get_size(record->saturation);
         record_size += record->brightness->get_size(record->brightness);
         record_size += record->dc_motor->get_size(record->dc_motor);
+        record_size += record->lamp_switch->get_size(record->lamp_switch);
 
         return record_size;
     }
@@ -326,6 +331,7 @@ p72416_t3_notification_t *p72416_t3_notification_deserialize(avro_reader_t reade
         record->saturation = p72416_t3_union_null_or_float_deserialize(reader);
         record->brightness = p72416_t3_union_null_or_float_deserialize(reader);
         record->dc_motor = p72416_t3_union_null_or_boolean_deserialize(reader);
+        record->lamp_switch = p72416_t3_union_null_or_boolean_deserialize(reader);
     }
 
     return record;

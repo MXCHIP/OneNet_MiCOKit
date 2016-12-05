@@ -7,7 +7,7 @@
 
 #define device_sensor_log(M, ...) custom_log("DS", M, ##__VA_ARGS__)
 
-static bool dc_motor = 0;
+static sensor_state_t *sensor_state;
 
 void onenet_profile_callback(const char *ieme, char **profile, size_t *size)
 {
@@ -49,40 +49,46 @@ int onenet_configuration_callback( const char *configuration, size_t size )
     return true;
 }
 
-void onenet_notification_callback( void **notification_conf, void **notification, avro_reader_t reader,
-                                          int *len )
+void onenet_notification_callback( void **notification_conf, void **notification, avro_reader_t reader, int *len )
 {
     p72416_t3_notification_t *noti_conf = p72416_t3_notification_create();
     p72416_t3_notification_t *noti = p72416_t3_notification_deserialize(reader);
 
-    float hues = 0;
-    float saturation = 0;
-    float brightness = 0;
-
-
     /*protocol conversion*/
     if( noti->hues->type == P72416_T3_UNION_NULL_OR_BOOLEAN_BRANCH_1 ){
-        hues = *(float *)noti->hues->data;
-        saturation = *(float *)noti->saturation->data;
-        brightness = *(float *)noti->brightness->data;
-        if( brightness > 1 ){
-            hsb2rgb_led_open(hues, saturation, brightness);
-        }else{
-            hsb2rgb_led_close();
+        sensor_state->hues = *(float *)noti->hues->data;
+        sensor_state->saturation = *(float *)noti->saturation->data;
+        sensor_state->brightness = *(float *)noti->brightness->data;
+        if( sensor_state->lamp_switch == true ){
+            hsb2rgb_led_open(sensor_state->hues, sensor_state->saturation, sensor_state->brightness);
         }
-        device_sensor_log("notification: H %.1f, S %.1f, H %.1f", hues, saturation, brightness);
+        device_sensor_log("notification: H %.1f, S %.1f, H %.1f",
+                          sensor_state->hues,
+                          sensor_state->saturation,
+                          sensor_state->brightness);
+    }
+
+    if( noti->lamp_switch->type == P72416_T3_UNION_NULL_OR_BOOLEAN_BRANCH_1 ){
+        sensor_state->lamp_switch = *(bool *)noti->lamp_switch->data;
+        if( sensor_state->lamp_switch == false ){
+            hsb2rgb_led_close();
+        }else{
+            hsb2rgb_led_open(sensor_state->hues, sensor_state->saturation, sensor_state->brightness);
+        }
+        device_sensor_log("notification: L %d", sensor_state->lamp_switch);
     }
 
     if( noti->dc_motor->type == P72416_T3_UNION_NULL_OR_BOOLEAN_BRANCH_1 ){
-        dc_motor = *(bool *)noti->dc_motor->data;
-        dc_motor_set(dc_motor);
-        device_sensor_log("notification: M %d", dc_motor);
+        sensor_state->dc_motor = *(bool *)noti->dc_motor->data;
+        dc_motor_set(sensor_state->dc_motor);
+        device_sensor_log("notification: M %d", sensor_state->dc_motor);
     }
 
     noti_conf->hues = p72416_t3_union_null_or_boolean_branch_0_create( );
     noti_conf->saturation = p72416_t3_union_null_or_boolean_branch_0_create( );
     noti_conf->brightness = p72416_t3_union_null_or_boolean_branch_0_create( );
     noti_conf->dc_motor = p72416_t3_union_null_or_boolean_branch_0_create( );
+    noti_conf->lamp_switch = p72416_t3_union_null_or_boolean_branch_0_create( );
 
     *notification_conf = noti_conf;
     *notification = noti;
@@ -129,16 +135,21 @@ void onenet_sensor_data_callback(void **sensor, int *len, uint8_t *data, uint32_
     sd->humidity = sensor_data->humidity;
     sd->infrared = sensor_data->infrared;
     sd->light_sensor = sensor_data->light_sensor;
-    sd->dc_motor = dc_motor;
+    sd->dc_motor = sensor_state->dc_motor;
+    sd->lamp_switch = sensor_state->lamp_switch;
+    sd->hues = sensor_state->hues;
+    sd->saturation = sensor_state->saturation;
+    sd->brightness = sensor_state->brightness;
 
     *len = sd->get_size(sd);
     *sensor = sd;
-    device_sensor_log("sensordata: T %d, H %d, I %d, L %d, D %d",
+    device_sensor_log("sensordata: T %d, H %d, I %d, L %d, D %d, LS %d",
                       sensor_data->temperature,
                       sensor_data->humidity,
                       sensor_data->infrared,
                       sensor_data->light_sensor,
-                      dc_motor);
+                      sensor_state->dc_motor,
+                      sensor_state->lamp_switch);
 }
 
 void onenet_seneor_data_destroy( avro_writer_t writer, void *sensor )
@@ -356,6 +367,8 @@ void device_oled_update( void )
 void device_sensor_int( void )
 {
     char version[30];
+    sensor_state = (sensor_state_t *)malloc(sizeof(sensor_state_t));
+    memset(sensor_state, 0x00, sizeof(sensor_state_t));
 
     get_firmware_version( version );
     device_sensor_log("firmware version %s", version);

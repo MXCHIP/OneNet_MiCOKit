@@ -38,6 +38,7 @@ typedef struct {
     regina_union_t * saturation;
     regina_union_t * brightness;
     regina_union_t * dc_motor;
+    regina_union_t * lamp_switch;
 
     serialize_fn serialize;
     get_size_fn  get_size;
